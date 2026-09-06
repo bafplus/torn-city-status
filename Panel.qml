@@ -27,7 +27,7 @@ Panel {
 
     property bool alertShown: false
     property string barText: root.getBarText()
-    property real panelHeight: 200 + (root.allTimers.length * 36) + ((root.chainData && root.chainData.current >= 3) ? 60 : 0) + (root.barsData ? 140 : 0) + 50
+    property real panelHeight: 200 + (root.allTimers.length * 36) + ((root.chainData && root.chainData.current >= 3) ? 60 : 0) + (root.barsData ? 140 : 0) + 50 + (root.showSettings ? 200 : 0)
     
     Timer {
         interval: 1000
