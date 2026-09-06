@@ -27,7 +27,7 @@ Panel {
 
     property bool alertShown: false
     property string barText: root.getBarText()
-    property real panelHeight: 200 + (root.allTimers.length * 36) + ((root.chainData && root.chainData.current >= 5) ? 60 : 0) + (root.barsData ? 140 : 0) + 50
+    property real panelHeight: 200 + (root.allTimers.length * 36) + ((root.chainData && root.chainData.current >= 3) ? 60 : 0) + (root.barsData ? 140 : 0) + 50
     
     Timer {
         interval: 1000
@@ -48,8 +48,8 @@ Panel {
                 }
                 root.chainData = newData
                 
-                // Alert at warning time for chain
-                if (root.chainData.timeout === root.warningSeconds && !root.alertShown) {
+                // Alert at warning time for chain (only at 3+ hits)
+                if (root.chainData.timeout === root.warningSeconds && !root.alertShown && root.chainData.current >= 3) {
                     root.alertShown = true
                     root.sendNotification("Chain expiring soon!", Model.formatTime(root.chainData.timeout) + " left - Chain " + root.chainData.current + "/" + root.chainData.max)
                 }
@@ -326,7 +326,7 @@ Panel {
 
             // Chain info
             Rectangle {
-                visible: root.chainData !== null && root.chainData.current >= 5
+                visible: root.chainData !== null && root.chainData.current >= 3
                 width: parent.width; height: 60; color: Color.popups.background; radius: 8; border.color: Color.popups.border; border.width: 1
                 Column {
                     anchors.fill: parent; anchors.margins: 12; spacing: 4
