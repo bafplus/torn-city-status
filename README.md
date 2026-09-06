@@ -2,6 +2,11 @@
 
 An [Omarchy](https://omarchy.org/) shell plugin that shows your Torn City player status, timers, and cooldowns in the status bar.
 
+## Preview
+
+<img width="644" height="510" alt="image" src="https://github.com/user-attachments/assets/66799b4f-aa9b-442f-b2b7-787477646c58" />
+
+
 ## Features
 
 - Player status display (Online, Hospital, Jail, Traveling, etc.)
