@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "torn-city-status",
+  "name": "Torn City Status",
+  "version": "1.0.0",
+  "author": "OpenChamber",
+  "description": "Torn City player status, timers and cooldowns in the bar",
+  "kinds": ["bar-widget"],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Torn City Status",
+    "description": "Player status, hospital/travel/jail timers, cooldowns. Left click: open Torn.",
+    "category": "Gaming",
+    "allowMultiple": false,
+    "defaults": {
+      "apiKey": "",
+      "updateIntervalSec": 30,
+      "warningSeconds": 60
+    }
+  }
+}
