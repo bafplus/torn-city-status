@@ -97,9 +97,15 @@ Panel {
         var timestamp = Math.floor(Date.now() / 1000)
         
         // Fetch user data
-        var userUrl = Model.baseUrl + "?selections=" + Model.selections + "&key=" + root.apiKey + "&timestamp=" + timestamp
+        var userUrl = Model.baseUrl + "?selections=" + Model.selections + "&timestamp=" + timestamp
         var userXhr = new XMLHttpRequest()
         userXhr.open("GET", userUrl, true)
+        userXhr.setRequestHeader("Authorization", "ApiKey " + root.apiKey)
+        userXhr.timeout = 15000
+        userXhr.ontimeout = function() {
+            root.lastError = "Request timeout"
+            root.loading = false
+        }
         userXhr.onreadystatechange = function() {
             if (userXhr.readyState === 4) {
                 if (userXhr.status === 200) {
@@ -114,6 +120,10 @@ Panel {
                         var barsXhr = new XMLHttpRequest()
                         barsXhr.open("GET", Model.barsUrl, true)
                         barsXhr.setRequestHeader("Authorization", "ApiKey " + root.apiKey)
+                        barsXhr.timeout = 15000
+                        barsXhr.ontimeout = function() {
+                            root.loading = false
+                        }
                         barsXhr.onreadystatechange = function() {
                             if (barsXhr.readyState === 4) {
                                 root.loading = false
@@ -315,10 +325,10 @@ Panel {
                     anchors.fill: parent; anchors.margins: 12; spacing: 4
                     Row {
                         spacing: 8
-                        Text { text: root.playerData ? Model.getStatusIcon(root.playerData.status.state) : "❓"; font.pixelSize: 24 }
+                        Text { text: root.playerData ? Model.getStatusIcon(root.playerData.status.state) : "❓"; font.pixelSize: 24; textFormat: Text.PlainText }
                         Column {
-                            Text { text: root.playerData ? root.playerData.name : "No data"; font.pixelSize: 16; font.bold: true; color: Color.foreground }
-                            Text { text: root.playerData ? root.playerData.status.description : (root.lastError || "Click refresh"); font.pixelSize: 12; color: root.lastError ? Color.urgent : Color.muted }
+                            Text { text: root.playerData ? root.playerData.name : "No data"; font.pixelSize: 16; font.bold: true; color: Color.foreground; textFormat: Text.PlainText }
+                            Text { text: root.playerData ? root.playerData.status.description : (root.lastError || "Click refresh"); font.pixelSize: 12; color: root.lastError ? Color.urgent : Color.muted; textFormat: Text.PlainText }
                         }
                     }
                 }
@@ -368,8 +378,8 @@ Panel {
                             spacing: 2
                             Row {
                                 width: parent.width
-                                Text { text: modelData.icon + " " + modelData.label + ": " + modelData.current + "/" + modelData.max; font.pixelSize: 11; font.bold: true; color: Color.foreground; width: parent.width - 60 }
-                                Text { text: modelData.timeLeft > 0 ? Model.formatTime(modelData.timeLeft) : "FULL"; font.pixelSize: 11; color: modelData.timeLeft > 0 ? Color.foreground : Color.muted }
+                                Text { text: modelData.icon + " " + modelData.label + ": " + modelData.current + "/" + modelData.max; font.pixelSize: 11; font.bold: true; color: Color.foreground; width: parent.width - 60; textFormat: Text.PlainText }
+                                Text { text: modelData.timeLeft > 0 ? Model.formatTime(modelData.timeLeft) : "FULL"; font.pixelSize: 11; color: modelData.timeLeft > 0 ? Color.foreground : Color.muted; textFormat: Text.PlainText }
                             }
                             Rectangle {
                                 width: parent.width; height: 6; radius: 3; color: Color.background
@@ -394,7 +404,7 @@ Panel {
                     Row {
                         anchors.fill: parent; anchors.margins: 6; spacing: 6
                         Text { text: modelData.icon || Model.getStatusIcon(modelData.type); font.pixelSize: 14; anchors.verticalCenter: parent.verticalCenter }
-                        Text { text: modelData.description; font.pixelSize: 11; color: Color.foreground; width: parent.width - 110; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }
+                        Text { text: modelData.description; font.pixelSize: 11; color: Color.foreground; width: parent.width - 110; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter; textFormat: Text.PlainText }
                         Text { text: Model.formatTime(modelData.timeLeft); font.pixelSize: 11; font.bold: true; color: modelData.timeLeft <= 60 ? Color.urgent : Color.accent; anchors.verticalCenter: parent.verticalCenter }
                         Text { text: "↗"; font.pixelSize: 12; color: Color.muted; anchors.verticalCenter: parent.verticalCenter }
                     }
