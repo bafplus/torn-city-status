@@ -4,6 +4,9 @@ var baseUrl = "https://api.torn.com/user/"
 var selections = "basic,bars,cooldowns,profile,travel"
 var barsUrl = "https://api.torn.com/v2/user?selections=bars"
 
+// Max response size: 256KB - Torn API responses are well under this limit
+var MAX_RESPONSE_BYTES = 262144
+
 var statusIcons = {
     "Okay": "🟢",
     "Hospital": "🏥",
@@ -62,6 +65,23 @@ function getStatusColor(state) {
 
 function getLink(type) {
     return tornLinks[type] || "https://www.torn.com"
+}
+
+// Validates XHR response size against the byte limit.
+// Returns the response text if valid, or null if oversized.
+function validateResponse(xhr) {
+    var contentLength = xhr.getResponseHeader("Content-Length")
+    if (contentLength) {
+        var size = parseInt(contentLength, 10)
+        if (size > MAX_RESPONSE_BYTES) {
+            return null
+        }
+    }
+    // Even if Content-Length is absent or lying, cap by actual length
+    if (xhr.responseText && xhr.responseText.length > MAX_RESPONSE_BYTES) {
+        return null
+    }
+    return xhr.responseText
 }
 
 function parseApiResponse(jsonString) {

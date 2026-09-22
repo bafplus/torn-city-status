@@ -108,8 +108,9 @@ Panel {
         }
         userXhr.onreadystatechange = function() {
             if (userXhr.readyState === 4) {
-                if (userXhr.status === 200) {
-                    var result = Model.parseApiResponse(userXhr.responseText)
+                var responseText = Model.validateResponse(userXhr)
+                if (userXhr.status === 200 && responseText !== null) {
+                    var result = Model.parseApiResponse(responseText)
                     if (result.error) { root.lastError = result.error }
                     else {
                         root.playerData = result
@@ -127,9 +128,10 @@ Panel {
                         barsXhr.onreadystatechange = function() {
                             if (barsXhr.readyState === 4) {
                                 root.loading = false
-                                if (barsXhr.status === 200) {
+                                var barsText = Model.validateResponse(barsXhr)
+                                if (barsXhr.status === 200 && barsText !== null) {
                                     try {
-                                        var barsData = JSON.parse(barsXhr.responseText)
+                                        var barsData = JSON.parse(barsText)
                                         if (barsData.bars) {
                                             root.barsData = barsData.bars
                                             if (barsData.bars.chain) {
@@ -142,8 +144,8 @@ Panel {
                         }
                         barsXhr.send()
                     }
-                } else { 
-                    root.lastError = "HTTP " + userXhr.status
+                } else {
+                    root.lastError = (responseText === null) ? "Response too large" : "HTTP " + userXhr.status
                     root.loading = false
                 }
             }
