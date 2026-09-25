@@ -106,6 +106,16 @@ Panel {
             root.lastError = "Request timeout"
             root.loading = false
         }
+        userXhr.onprogress = function() {
+            if (userXhr.getResponseHeader("Content-Length")) {
+                var size = parseInt(userXhr.getResponseHeader("Content-Length"), 10)
+                if (size > Model.MAX_RESPONSE_BYTES) {
+                    userXhr.abort()
+                    root.lastError = "Response too large"
+                    root.loading = false
+                }
+            }
+        }
         userXhr.onreadystatechange = function() {
             if (userXhr.readyState === 4) {
                 var responseText = Model.validateResponse(userXhr)
@@ -124,6 +134,15 @@ Panel {
                         barsXhr.timeout = 15000
                         barsXhr.ontimeout = function() {
                             root.loading = false
+                        }
+                        barsXhr.onprogress = function() {
+                            if (barsXhr.getResponseHeader("Content-Length")) {
+                                var size = parseInt(barsXhr.getResponseHeader("Content-Length"), 10)
+                                if (size > Model.MAX_RESPONSE_BYTES) {
+                                    barsXhr.abort()
+                                    root.loading = false
+                                }
+                            }
                         }
                         barsXhr.onreadystatechange = function() {
                             if (barsXhr.readyState === 4) {
