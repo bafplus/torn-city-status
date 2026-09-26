@@ -3,6 +3,7 @@
 var baseUrl = "https://api.torn.com/user/"
 var selections = "basic,bars,cooldowns,profile,travel"
 var barsUrl = "https://api.torn.com/v2/user?selections=bars"
+var messagesUrl = "https://api.torn.com/v2/user?selections=messages"
 
 // Max response size: 256KB - Torn API responses are well under this limit
 var MAX_RESPONSE_BYTES = 262144

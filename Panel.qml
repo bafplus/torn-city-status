@@ -14,6 +14,8 @@ Panel {
     property var allTimers: []
     property var chainData: null
     property var barsData: null
+    property var unreadMessages: []
+    property int prevUnreadCount: -1
     property string lastError: ""
     property bool loading: false
     property bool showSettings: false
@@ -162,6 +164,11 @@ Panel {
                             }
                         }
                         barsXhr.send()
+                        
+                        // Fetch unread messages and check for new ones
+                        root.prevUnreadCount = root.unreadMessages.length
+                        root.fetchMessages()
+                        root.checkNewMessages(root.prevUnreadCount)
                     }
                 } else {
                     root.lastError = (responseText === null) ? "Response too large" : "HTTP " + userXhr.status
@@ -170,6 +177,52 @@ Panel {
             }
         }
         userXhr.send()
+    }
+
+    function fetchMessages() {
+        if (root.apiKey === "") return
+        
+        var prevCount = root.unreadMessages.length
+        var msgXhr = new XMLHttpRequest()
+        msgXhr.open("GET", Model.messagesUrl, true)
+        msgXhr.setRequestHeader("Authorization", "ApiKey " + root.apiKey)
+        msgXhr.timeout = 15000
+        msgXhr.ontimeout = function() {}
+        msgXhr.onprogress = function() {
+            if (msgXhr.getResponseHeader("Content-Length")) {
+                var size = parseInt(msgXhr.getResponseHeader("Content-Length"), 10)
+                if (size > Model.MAX_RESPONSE_BYTES) {
+                    msgXhr.abort()
+                }
+            }
+        }
+        msgXhr.onreadystatechange = function() {
+            if (msgXhr.readyState === 4) {
+                var responseText = Model.validateResponse(msgXhr)
+                if (msgXhr.status === 200 && responseText !== null) {
+                    try {
+                        var data = JSON.parse(responseText)
+                        if (data.messages) {
+                            var unread = []
+                            for (var i = 0; i < data.messages.length; i++) {
+                                if (!data.messages[i].seen) {
+                                    unread.push(data.messages[i])
+                                }
+                            }
+                            root.unreadMessages = unread
+                            // Check for new messages after fetch
+                            if (unread.length > prevCount && prevCount >= 0) {
+                                var newest = unread[0]
+                                var sender = newest.sender ? (newest.sender.name || newest.sender) : "Unknown"
+                                var topic = newest.topic || "New message"
+                                root.sendNotification("New Torn mail!", sender + ": " + topic)
+                            }
+                        }
+                    } catch (e) {}
+                }
+            }
+        }
+        msgXhr.send()
     }
 
     function saveSetting(key, value) {
@@ -216,6 +269,11 @@ Panel {
         // Chain timer
         if (root.chainData && root.chainData.timeout > 0) {
             parts.push("🔗 " + Model.formatTimeShort(root.chainData.timeout))
+        }
+        
+        // Unread messages
+        if (root.unreadMessages.length > 0) {
+            parts.push("✉️ " + root.unreadMessages.length)
         }
         
         return parts.join(" ")
