@@ -14,8 +14,12 @@ Panel {
     property var allTimers: []
     property var chainData: null
     property var barsData: null
-    property var unreadMessages: []
-    property int prevUnreadCount: -1
+    property int msgCount: 0
+    property int evtCount: 0
+    property int awardCount: 0
+    property int prevMsgCount: -1
+    property int prevEvtCount: -1
+    property int prevAwardCount: -1
     property string lastError: ""
     property bool loading: false
     property bool showSettings: false
@@ -165,10 +169,8 @@ Panel {
                         }
                         barsXhr.send()
                         
-                        // Fetch unread messages and check for new ones
-                        root.prevUnreadCount = root.unreadMessages.length
+                        // Fetch notifications
                         root.fetchMessages()
-                        root.checkNewMessages(root.prevUnreadCount)
                     }
                 } else {
                     root.lastError = (responseText === null) ? "Response too large" : "HTTP " + userXhr.status
@@ -182,7 +184,10 @@ Panel {
     function fetchMessages() {
         if (root.apiKey === "") return
         
-        var prevCount = root.unreadMessages.length
+        var prevMsg = root.msgCount
+        var prevEvt = root.evtCount
+        var prevAward = root.awardCount
+        
         var msgXhr = new XMLHttpRequest()
         msgXhr.open("GET", Model.messagesUrl, true)
         msgXhr.setRequestHeader("Authorization", "ApiKey " + root.apiKey)
@@ -202,20 +207,20 @@ Panel {
                 if (msgXhr.status === 200 && responseText !== null) {
                     try {
                         var data = JSON.parse(responseText)
-                        if (data.messages) {
-                            var unread = []
-                            for (var i = 0; i < data.messages.length; i++) {
-                                if (!data.messages[i].seen) {
-                                    unread.push(data.messages[i])
-                                }
+                        if (data.notifications) {
+                            root.msgCount = data.notifications.messages || 0
+                            root.evtCount = data.notifications.events || 0
+                            root.awardCount = data.notifications.awards || 0
+                            
+                            // Alerts for new notifications
+                            if (root.msgCount > prevMsg && prevMsg >= 0) {
+                                root.sendNotification("New Torn mail!", "You have new messages")
                             }
-                            root.unreadMessages = unread
-                            // Check for new messages after fetch
-                            if (unread.length > prevCount && prevCount >= 0) {
-                                var newest = unread[0]
-                                var sender = newest.sender ? (newest.sender.name || newest.sender) : "Unknown"
-                                var topic = newest.topic || "New message"
-                                root.sendNotification("New Torn mail!", sender + ": " + topic)
+                            if (root.evtCount > prevEvt && prevEvt >= 0) {
+                                root.sendNotification("New Torn event!", "You have a new event")
+                            }
+                            if (root.awardCount > prevAward && prevAward >= 0) {
+                                root.sendNotification("New Torn award!", "You earned a new award")
                             }
                         }
                     } catch (e) {}
@@ -271,10 +276,10 @@ Panel {
             parts.push("🔗 " + Model.formatTimeShort(root.chainData.timeout))
         }
         
-        // Unread messages
-        if (root.unreadMessages.length > 0) {
-            parts.push("✉️ " + root.unreadMessages.length)
-        }
+        // Notifications
+        if (root.msgCount > 0) parts.push("✉️" + root.msgCount)
+        if (root.evtCount > 0) parts.push("ℹ️" + root.evtCount)
+        if (root.awardCount > 0) parts.push("🏆" + root.awardCount)
         
         return parts.join(" ")
     }
