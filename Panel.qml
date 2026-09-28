@@ -112,14 +112,11 @@ Panel {
             root.lastError = "Request timeout"
             root.loading = false
         }
-        userXhr.onprogress = function() {
-            if (userXhr.getResponseHeader("Content-Length")) {
-                var size = parseInt(userXhr.getResponseHeader("Content-Length"), 10)
-                if (size > Model.MAX_RESPONSE_BYTES) {
-                    userXhr.abort()
-                    root.lastError = "Response too large"
-                    root.loading = false
-                }
+        userXhr.onprogress = function(evt) {
+            if (evt.loaded > Model.MAX_RESPONSE_BYTES) {
+                userXhr.abort()
+                root.lastError = "Response too large"
+                root.loading = false
             }
         }
         userXhr.onreadystatechange = function() {
@@ -141,13 +138,10 @@ Panel {
                         barsXhr.ontimeout = function() {
                             root.loading = false
                         }
-                        barsXhr.onprogress = function() {
-                            if (barsXhr.getResponseHeader("Content-Length")) {
-                                var size = parseInt(barsXhr.getResponseHeader("Content-Length"), 10)
-                                if (size > Model.MAX_RESPONSE_BYTES) {
-                                    barsXhr.abort()
-                                    root.loading = false
-                                }
+                        barsXhr.onprogress = function(evt) {
+                            if (evt.loaded > Model.MAX_RESPONSE_BYTES) {
+                                barsXhr.abort()
+                                root.loading = false
                             }
                         }
                         barsXhr.onreadystatechange = function() {
@@ -193,12 +187,9 @@ Panel {
         msgXhr.setRequestHeader("Authorization", "ApiKey " + root.apiKey)
         msgXhr.timeout = 15000
         msgXhr.ontimeout = function() {}
-        msgXhr.onprogress = function() {
-            if (msgXhr.getResponseHeader("Content-Length")) {
-                var size = parseInt(msgXhr.getResponseHeader("Content-Length"), 10)
-                if (size > Model.MAX_RESPONSE_BYTES) {
-                    msgXhr.abort()
-                }
+        msgXhr.onprogress = function(evt) {
+            if (evt.loaded > Model.MAX_RESPONSE_BYTES) {
+                msgXhr.abort()
             }
         }
         msgXhr.onreadystatechange = function() {
