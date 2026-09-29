@@ -96,129 +96,112 @@ Panel {
 
     onOpenedChanged: if (opened && !root.playerData) root.fetchData()
 
+    // curl-based fetch with byte limit enforced at transport layer
+    Process {
+        id: userProcess
+        command: ["curl"]
+        running: false
+        property string output: ""
+        stdout: SplitParser {
+            onRead: data => { userProcess.output += data }
+        }
+        onExited: function(exitCode) {
+            if (exitCode !== 0 || !userProcess.output) {
+                root.lastError = exitCode === 0 ? "Empty response" : "Request failed"
+                root.loading = false
+                userProcess.output = ""
+                return
+            }
+            var result = Model.parseApiResponse(userProcess.output)
+            userProcess.output = ""
+            if (result.error) { root.lastError = result.error }
+            else {
+                root.playerData = result
+                root.allTimers = Model.calculateTimers(result.serverTime, result)
+                root.lastError = ""
+                root.fetchBars()
+            }
+        }
+    }
+
+    Process {
+        id: barsProcess
+        command: ["curl"]
+        running: false
+        property string output: ""
+        stdout: SplitParser {
+            onRead: data => { barsProcess.output += data }
+        }
+        onExited: function(exitCode) {
+            root.loading = false
+            if (exitCode !== 0 || !barsProcess.output) {
+                barsProcess.output = ""
+                return
+            }
+            try {
+                var barsData = JSON.parse(barsProcess.output)
+                if (barsData.bars) {
+                    root.barsData = barsData.bars
+                    if (barsData.bars.chain) {
+                        root.chainData = barsData.bars.chain
+                    }
+                }
+            } catch (e) {}
+            barsProcess.output = ""
+            root.fetchMessages()
+        }
+    }
+
+    Process {
+        id: msgProcess
+        command: ["curl"]
+        running: false
+        property string output: ""
+        stdout: SplitParser {
+            onRead: data => { msgProcess.output += data }
+        }
+        onExited: function(exitCode) {
+            if (exitCode !== 0 || !msgProcess.output) {
+                msgProcess.output = ""
+                return
+            }
+            var prevMsg = root.msgCount
+            var prevEvt = root.evtCount
+            var prevAward = root.awardCount
+            try {
+                var data = JSON.parse(msgProcess.output)
+                if (data.notifications) {
+                    root.msgCount = data.notifications.messages || 0
+                    root.evtCount = data.notifications.events || 0
+                    root.awardCount = data.notifications.awards || 0
+                    if (root.msgCount > prevMsg && prevMsg >= 0) root.sendNotification("New Torn mail!", "You have new messages")
+                    if (root.evtCount > prevEvt && prevEvt >= 0) root.sendNotification("New Torn event!", "You have a new event")
+                    if (root.awardCount > prevAward && prevAward >= 0) root.sendNotification("New Torn award!", "You earned a new award")
+                }
+            } catch (e) {}
+            msgProcess.output = ""
+        }
+    }
+
     function fetchData() {
         if (root.apiKey === "") { root.lastError = "No API key configured"; return }
         root.loading = true
         root.lastError = ""
         var timestamp = Math.floor(Date.now() / 1000)
-        
-        // Fetch user data
-        var userUrl = Model.baseUrl + "?selections=" + Model.selections + "&timestamp=" + timestamp
-        var userXhr = new XMLHttpRequest()
-        userXhr.open("GET", userUrl, true)
-        userXhr.setRequestHeader("Authorization", "ApiKey " + root.apiKey)
-        userXhr.timeout = 15000
-        userXhr.ontimeout = function() {
-            root.lastError = "Request timeout"
-            root.loading = false
-        }
-        userXhr.onprogress = function(evt) {
-            if (evt.loaded > Model.MAX_RESPONSE_BYTES) {
-                userXhr.abort()
-                root.lastError = "Response too large"
-                root.loading = false
-            }
-        }
-        userXhr.onreadystatechange = function() {
-            if (userXhr.readyState === 4) {
-                var responseText = Model.validateResponse(userXhr)
-                if (userXhr.status === 200 && responseText !== null) {
-                    var result = Model.parseApiResponse(responseText)
-                    if (result.error) { root.lastError = result.error }
-                    else {
-                        root.playerData = result
-                        root.allTimers = Model.calculateTimers(result.serverTime, result)
-                        root.lastError = ""
-                        
-                        // Fetch bars data (includes chain)
-                        var barsXhr = new XMLHttpRequest()
-                        barsXhr.open("GET", Model.barsUrl, true)
-                        barsXhr.setRequestHeader("Authorization", "ApiKey " + root.apiKey)
-                        barsXhr.timeout = 15000
-                        barsXhr.ontimeout = function() {
-                            root.loading = false
-                        }
-                        barsXhr.onprogress = function(evt) {
-                            if (evt.loaded > Model.MAX_RESPONSE_BYTES) {
-                                barsXhr.abort()
-                                root.loading = false
-                            }
-                        }
-                        barsXhr.onreadystatechange = function() {
-                            if (barsXhr.readyState === 4) {
-                                root.loading = false
-                                var barsText = Model.validateResponse(barsXhr)
-                                if (barsXhr.status === 200 && barsText !== null) {
-                                    try {
-                                        var barsData = JSON.parse(barsText)
-                                        if (barsData.bars) {
-                                            root.barsData = barsData.bars
-                                            if (barsData.bars.chain) {
-                                                root.chainData = barsData.bars.chain
-                                            }
-                                        }
-                                    } catch (e) {}
-                                }
-                            }
-                        }
-                        barsXhr.send()
-                        
-                        // Fetch notifications
-                        root.fetchMessages()
-                    }
-                } else {
-                    root.lastError = (responseText === null) ? "Response too large" : "HTTP " + userXhr.status
-                    root.loading = false
-                }
-            }
-        }
-        userXhr.send()
+        var url = Model.baseUrl + "?selections=" + Model.selections + "&timestamp=" + timestamp
+        userProcess.command = Model.getCurlArgs(url, root.apiKey)
+        userProcess.running = true
+    }
+
+    function fetchBars() {
+        barsProcess.command = Model.getCurlArgs(Model.barsUrl, root.apiKey)
+        barsProcess.running = true
     }
 
     function fetchMessages() {
         if (root.apiKey === "") return
-        
-        var prevMsg = root.msgCount
-        var prevEvt = root.evtCount
-        var prevAward = root.awardCount
-        
-        var msgXhr = new XMLHttpRequest()
-        msgXhr.open("GET", Model.messagesUrl, true)
-        msgXhr.setRequestHeader("Authorization", "ApiKey " + root.apiKey)
-        msgXhr.timeout = 15000
-        msgXhr.ontimeout = function() {}
-        msgXhr.onprogress = function(evt) {
-            if (evt.loaded > Model.MAX_RESPONSE_BYTES) {
-                msgXhr.abort()
-            }
-        }
-        msgXhr.onreadystatechange = function() {
-            if (msgXhr.readyState === 4) {
-                var responseText = Model.validateResponse(msgXhr)
-                if (msgXhr.status === 200 && responseText !== null) {
-                    try {
-                        var data = JSON.parse(responseText)
-                        if (data.notifications) {
-                            root.msgCount = data.notifications.messages || 0
-                            root.evtCount = data.notifications.events || 0
-                            root.awardCount = data.notifications.awards || 0
-                            
-                            // Alerts for new notifications
-                            if (root.msgCount > prevMsg && prevMsg >= 0) {
-                                root.sendNotification("New Torn mail!", "You have new messages")
-                            }
-                            if (root.evtCount > prevEvt && prevEvt >= 0) {
-                                root.sendNotification("New Torn event!", "You have a new event")
-                            }
-                            if (root.awardCount > prevAward && prevAward >= 0) {
-                                root.sendNotification("New Torn award!", "You earned a new award")
-                            }
-                        }
-                    } catch (e) {}
-                }
-            }
-        }
-        msgXhr.send()
+        msgProcess.command = Model.getCurlArgs(Model.messagesUrl, root.apiKey)
+        msgProcess.running = true
     }
 
     function saveSetting(key, value) {

@@ -68,21 +68,24 @@ function getLink(type) {
     return tornLinks[type] || "https://www.torn.com"
 }
 
-// Validates XHR response size against the byte limit.
-// Returns the response text if valid, or null if oversized.
-function validateResponse(xhr) {
-    var contentLength = xhr.getResponseHeader("Content-Length")
-    if (contentLength) {
-        var size = parseInt(contentLength, 10)
-        if (size > MAX_RESPONSE_BYTES) {
-            return null
-        }
-    }
-    // Even if Content-Length is absent or lying, cap by actual length
-    if (xhr.responseText && xhr.responseText.length > MAX_RESPONSE_BYTES) {
-        return null
-    }
-    return xhr.responseText
+// Build curl command with byte limit enforcement at the transport layer
+function getCurlArgs(url, apiKey) {
+    return [
+        "/usr/bin/curl",
+        "-s",                          // Silent
+        "--max-time", "15",            // 15s timeout
+        "--max-filesize", String(MAX_RESPONSE_BYTES),  // Byte limit
+        "-H", "Authorization: ApiKey " + apiKey,
+        "-H", "Accept: application/json",
+        url
+    ]
+}
+
+// Parse curl output - returns null if curl failed or response was too large
+function parseCurlOutput(exitCode, stdout) {
+    if (exitCode !== 0) return null
+    if (!stdout || stdout.length > MAX_RESPONSE_BYTES) return null
+    return stdout
 }
 
 function parseApiResponse(jsonString) {
