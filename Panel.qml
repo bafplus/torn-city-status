@@ -97,15 +97,19 @@ Panel {
     onOpenedChanged: if (opened && !root.playerData) root.fetchData()
 
     // curl-based fetch with byte limit enforced at transport layer
+    // API key passed via environment variable, never in command-line args
     Process {
         id: userProcess
-        command: ["curl"]
+        command: ["bash", "-c"]
         running: false
+        environment: ({ TORN_API_KEY: root.apiKey })
         property string output: ""
+        property string url: ""
         stdout: SplitParser {
             onRead: data => { userProcess.output += data }
         }
         onExited: function(exitCode) {
+            console.log("Torn: userProcess exited, code=", exitCode, "output length=", userProcess.output.length)
             if (exitCode !== 0 || !userProcess.output) {
                 root.lastError = exitCode === 0 ? "Empty response" : "Request failed"
                 root.loading = false
@@ -126,9 +130,11 @@ Panel {
 
     Process {
         id: barsProcess
-        command: ["curl"]
+        command: ["bash", "-c"]
         running: false
+        environment: ({ TORN_API_KEY: root.apiKey })
         property string output: ""
+        property string url: ""
         stdout: SplitParser {
             onRead: data => { barsProcess.output += data }
         }
@@ -154,9 +160,11 @@ Panel {
 
     Process {
         id: msgProcess
-        command: ["curl"]
+        command: ["bash", "-c"]
         running: false
+        environment: ({ TORN_API_KEY: root.apiKey })
         property string output: ""
+        property string url: ""
         stdout: SplitParser {
             onRead: data => { msgProcess.output += data }
         }
@@ -189,18 +197,21 @@ Panel {
         root.lastError = ""
         var timestamp = Math.floor(Date.now() / 1000)
         var url = Model.baseUrl + "?selections=" + Model.selections + "&timestamp=" + timestamp
-        userProcess.command = Model.getCurlArgs(url, root.apiKey)
+        userProcess.url = url
+        userProcess.command = ["bash", "-c", Model.getCurlCmd(url)]
         userProcess.running = true
     }
 
     function fetchBars() {
-        barsProcess.command = Model.getCurlArgs(Model.barsUrl, root.apiKey)
+        barsProcess.url = Model.barsUrl
+        barsProcess.command = ["bash", "-c", Model.getCurlCmd(Model.barsUrl)]
         barsProcess.running = true
     }
 
     function fetchMessages() {
         if (root.apiKey === "") return
-        msgProcess.command = Model.getCurlArgs(Model.messagesUrl, root.apiKey)
+        msgProcess.url = Model.messagesUrl
+        msgProcess.command = ["bash", "-c", Model.getCurlCmd(Model.messagesUrl)]
         msgProcess.running = true
     }
 

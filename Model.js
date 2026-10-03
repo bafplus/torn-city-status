@@ -68,24 +68,12 @@ function getLink(type) {
     return tornLinks[type] || "https://www.torn.com"
 }
 
-// Build curl command with byte limit enforcement at the transport layer
-function getCurlArgs(url, apiKey) {
-    return [
-        "/usr/bin/curl",
-        "-s",                          // Silent
-        "--max-time", "15",            // 15s timeout
-        "--max-filesize", String(MAX_RESPONSE_BYTES),  // Byte limit
-        "-H", "Authorization: ApiKey " + apiKey,
-        "-H", "Accept: application/json",
-        url
-    ]
-}
-
-// Parse curl output - returns null if curl failed or response was too large
-function parseCurlOutput(exitCode, stdout) {
-    if (exitCode !== 0) return null
-    if (!stdout || stdout.length > MAX_RESPONSE_BYTES) return null
-    return stdout
+// Build curl command that reads API key from environment variable
+function getCurlCmd(url) {
+    return 'curl -s --max-time 15 --max-filesize ' + MAX_RESPONSE_BYTES +
+           ' -H "Authorization: ApiKey $TORN_API_KEY"' +
+           ' -H "Accept: application/json"' +
+           ' "' + url + '"'
 }
 
 function parseApiResponse(jsonString) {
