@@ -73,7 +73,7 @@ function getCurlCmd(url) {
     return 'curl -s --max-time 15 --max-filesize ' + MAX_RESPONSE_BYTES +
            ' -H "Authorization: ApiKey $TORN_API_KEY"' +
            ' -H "Accept: application/json"' +
-           ' "' + url + '"'
+           ' "' + url.replace(/"/g, '\\"') + '"'
 }
 
 function parseApiResponse(jsonString) {
